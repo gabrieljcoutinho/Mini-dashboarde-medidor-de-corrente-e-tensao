@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Simulador — Corrente, Tensão e Potência</title>
+
+  <link rel="stylesheet" href="./style.css">
+
+</head>
+<body>
+<header>
+  <h1>Simulador de Corrente, Tensão e Potência</h1>
+  <div class="sub">Energia Solar — com bateria, rede e alertas dinâmicos</div>
+</header>
+
+<main class="wrap grid">
+  <section class="card">
+    <div class="gauges">
+      <div class="gauge"><div class="ring" id="gV"></div><div class="value" id="vV">0.0 V</div><div class="label">Tensão</div></div>
+      <div class="gauge"><div class="ring" id="gI"></div><div class="value" id="vI">0.00 A</div><div class="label">Corrente</div></div>
+      <div class="gauge"><div class="ring" id="gP"></div><div class="value" id="vP">0 W</div><div class="label">Potência</div></div>
+    </div>
+    <canvas id="chart" width="900" height="280"></canvas>
+  </section>
+
+  <aside class="grid">
+    <div class="card">
+      <div class="battery">
+        <div class="bar-wrap"><div class="bar" id="bBar"></div></div>
+        <div>
+          <div style="font-size:12px;color:var(--muted)">Bateria</div>
+          <div id="bSoc" style="font-weight:800">100%</div>
+        </div>
+      </div>
+      <div class="kpis">
+        <div class="kpi"><div class="k">Origem</div><div class="v" id="kSource">Bateria</div></div>
+        <div class="kpi"><div class="k">Fluxo</div><div class="v" id="kFlow">PV → Carga</div></div>
+      </div>
+    </div>
+
+    <div class="card controls">
+      <div class="ctrl">
+        <div class="top"><label for="sun">Sol</label><output id="sunOut">60%</output></div>
+        <input id="sun" type="range" min="0" max="100" value="60" />
+      </div>
+      <div class="ctrl">
+        <div class="top"><label for="load">Carga</label><output id="loadOut">400 W</output></div>
+        <input id="load" type="range" min="0" max="2000" step="50" value="400" />
+      </div>
+      <div class="toggles">
+        <label class="switch"><input id="useBattery" type="checkbox" checked /><span>Usar Bateria</span></label>
+        <label class="switch"><input id="simToggle" type="checkbox" checked /><span>Simulação</span></label>
+      </div>
+    </div>
+
+    <div class="card alerts">
+      <div class="alert ok" id="aStatus">Sistema estável.</div>
+    </div>
+  </aside>
+</main>
+
+<footer>Feito em HTML, CSS e JS puro — interaja com os sliders</footer>
+
+<script>
+/* ======= Parâmetros ======= */
+const NOMINAL_V   = 48,
+      MAX_PV_W    = 1800,
+      MAX_I_A     = 40,
+      BAT_CAP_Wh  = 2000;
+
+let soc = 0.8, running = true, pvW = 0, busV = NOMINAL_V, busI = 0, loadW = 400;
+
+/* ======= DOM ======= */
+const els = {
+  gV, gI, gP, vV, vI, vP,
+  bBar, bSoc, kSource, kFlow,
+  aStatus, sun, sunOut, load, loadOut,
+  useBattery, simToggle, chart
+};
+
+/* ======= Eventos ======= */
+els.sun.oninput   = e => els.sunOut.value = e.target.value + '%';
+els.load.oninput  = e => { loadW = +e.target.value; els.loadOut.value = loadW + ' W'; };
+els.simToggle.onchange = e => running = e.target.checked;
+
+/* ======= Gráfico ======= */
+const ctx = els.chart.getContext('2d');
+const points = [];
+const MAX_POINTS = 240;
+
+function drawChart() {
+  const w = els.chart.width, h = els.chart.height;
+  ctx.clearRect(0, 0, w, h);
+
+  // linhas de grade
+  ctx.globalAlpha = .12;
+  ctx.strokeStyle = '#fff';
+  for (let i = 0; i < 6; i++) {
+    ctx.beginPath();
+    ctx.moveTo(0, (h/5) * i);
+    ctx.lineTo(w, (h/5) * i);
+    ctx.stroke();
+  }
+
+  // curva
+  ctx.globalAlpha = 1;
+  if (points.length < 2) return;
+  const maxY = Math.max(1000, ...points);
+
+  ctx.beginPath();
+  ctx.strokeStyle = '#5da8ff';
+  ctx.lineWidth = 2;
+  points.forEach((p, i) => {
+    const x = (i / (MAX_POINTS - 1)) * w;
+    const y = h - (p / maxY) * h;
+    i ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
+  });
+  ctx.stroke();
+}
+
+/* ======= Helpers ======= */
+function setGauge(el, val, max, col) {
+  el.style.setProperty('--val', Math.min(100, val / max * 100) + '%');
+  el.style.setProperty('--color', col);
+}
+function formatPower(w) {
+  return w >= 1000 ? (w/1000).toFixed(2) + ' kW' : w.toFixed(0) + ' W';
+}
+function battColor(s) {
+  return s >= .5 ? '#3bb3ff' :
+         s >= .3 ? '#ffbf47' :
+         s >= .21 ? '#ff8a47' : '#ff5a6e';
+}
+function updateBattery() {
+  const p = Math.round(soc * 100);
+  els.bSoc.textContent = p + '%';
+  els.bBar.style.width = p + '%';
+  els.bBar.style.background = battColor(soc);
+}
+
+/* ======= Loop ======= */
+let last = performance.now();
+function step(ts) {
+  const dt = (ts - last) / 1000;
+  last = ts;
+
+  const sunVal = +els.sun.value / 100;
+  pvW = MAX_PV_W * (sunVal + (Math.random() - .5) * .05);
+
+  const toLoad  = Math.min(pvW, loadW);
+  const surplus = Math.max(0, pvW - loadW);
+  let deficit   = Math.max(0, loadW - pvW);
+
+  let battW = 0;
+  if (surplus > 0 && soc < .999) {
+    battW = surplus * 0.95; // carga
+  } else if (deficit > 0 && els.useBattery.checked && soc > .05) {
+    const d = Math.min(1500, deficit);
+    battW = -d / 0.95; // descarga
+    deficit -= d;
+  }
+
+  // Atualiza SOC
+  soc = Math.min(1, Math.max(0, soc + (battW * dt / 3600) / BAT_CAP_Wh));
+
+  // Atualiza barramento
+  busV = NOMINAL_V * (.95 + sunVal * 0.1);
+  busI = (toLoad + Math.max(0, -battW)) / busV;
+
+  /* UI */
+  setGauge(els.gV, busV, 60, '#5da8ff');
+  setGauge(els.gI, busI, MAX_I_A, busI > MAX_I_A * .8 ? '#ff5a6e' : '#21d07a');
+  setGauge(els.gP, pvW, MAX_PV_W, '#21d07a');
+
+  els.vV.textContent = busV.toFixed(1) + ' V';
+  els.vI.textContent = busI.toFixed(2) + ' A';
+  els.vP.textContent = formatPower(pvW);
+
+  updateBattery();
+  els.kSource.textContent = els.useBattery.checked ? 'Bateria' : 'Rede';
+  els.kFlow.textContent = pvW
+    ? 'PV→Carga' + (battW > 0 ? ' +Bateria(↑)' : battW < 0 ? ' +Bateria(↓)' : '')
+    : 'Rede→Carga';
+
+  // Status
+  els.aStatus.className = 'alert ' + (busI > MAX_I_A ? 'bad' : soc < .1 ? 'warn' : 'ok');
+  els.aStatus.textContent =
+    busI > MAX_I_A ? 'Sobrecorrente!' :
+    soc < .1 ? 'Bateria baixa!' : 'Sistema estável.';
+
+  // Atualiza gráfico
+  points.push(pvW);
+  if (points.length > MAX_POINTS) points.shift();
+  drawChart();
+}
+
+function loop(ts) {
+  if (running) step(ts);
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>

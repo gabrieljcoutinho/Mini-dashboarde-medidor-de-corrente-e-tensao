@@ -1,0 +1,129 @@
+
+  /* ======= Variáveis ======= */
+  :root {
+    --bg: #0b1020;
+    --card: #121831;
+    --muted: #8ea0c0;
+    --text: #e9eefc;
+    --accent: #5da8ff;
+    --ok: #21d07a;
+    --warn: #ffbf47;
+    --bad: #ff5a6e;
+  }
+
+  /* ======= Base ======= */
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font: 500 15px/1.45 Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+    background: linear-gradient(180deg, #0a0f22 0%, #0d1430 100%);
+    color: var(--text);
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    min-height: 100vh;
+  }
+
+  /* ======= Header ======= */
+  header {
+    position: sticky; top: 0; z-index: 10;
+    backdrop-filter: blur(12px);
+    background: rgba(10,15,34,.75);
+    border-bottom: 1px solid rgba(255,255,255,.08);
+    padding: 14px 18px;
+  }
+  header h1 { margin: 0; font-size: clamp(18px,2.5vw,24px); }
+  header .sub { color: var(--muted); font-size: 13px; margin-top: 4px; }
+
+  /* ======= Layout ======= */
+  .wrap { max-width: 1100px; margin: 0 auto; padding: 0 16px; }
+  .grid { display: grid; gap: 14px; }
+  @media (min-width: 860px) {
+    .grid { grid-template-columns: 1.2fr .8fr; }
+  }
+
+  /* ======= Card ======= */
+  .card {
+    background: var(--card);
+    border: 1px solid rgba(255,255,255,.06);
+    border-radius: 16px;
+    padding: 14px;
+    box-shadow: 0 8px 28px rgba(0,0,0,.25);
+  }
+
+  /* ======= Medidores circulares ======= */
+  .gauges { display: grid; gap: 12px; grid-template-columns: repeat(3,1fr); }
+  .gauge { display: grid; place-items: center; gap: 6px; }
+  .ring {
+    --size: 120px;
+    width: var(--size); height: var(--size);
+    border-radius: 50%;
+    display: grid; place-items: center;
+    background:
+      radial-gradient(closest-side, var(--card) 78%, transparent 79% 100%),
+      conic-gradient(var(--color, var(--accent)) var(--val,0%), #26314f 0);
+    transition: background .4s ease;
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,.06);
+  }
+  .value { font-weight: 800; font-size: 19px; }
+  .label { font-size: 12px; color: var(--muted); letter-spacing: .1em; }
+
+  /* ======= Bateria ======= */
+  .battery { display: flex; align-items: center; gap: 14px; }
+  .bar-wrap {
+    flex: 1; background: #0c1125;
+    border: 1px solid rgba(255,255,255,.06);
+    border-radius: 12px; padding: 6px;
+  }
+  .bar {
+    height: 14px; border-radius: 10px;
+    width: 0%; background: var(--ok);
+    transition: width .5s ease, background .4s ease;
+  }
+
+  /* ======= KPIs ======= */
+  .kpis { display: grid; gap: 10px; grid-template-columns: repeat(2,1fr); margin-top: 10px; }
+  .kpi { background: #0c1125; border: 1px solid rgba(255,255,255,.06); border-radius: 12px; padding: 8px; }
+  .kpi .k { color: var(--muted); font-size: 12px; }
+  .kpi .v { font-weight: 700; margin-top: 4px; }
+
+  /* ======= Controles ======= */
+  .controls {
+    display: grid; gap: 14px;
+    background: #0c1125; border: 1px solid rgba(255,255,255,.06);
+    border-radius: 14px; padding: 12px;
+  }
+  .ctrl { display: grid; gap: 6px; }
+  .ctrl .top { display: flex; justify-content: space-between; font-size: 14px; }
+  input[type="range"]{ width: 100%; }
+
+  /* ======= Switches ======= */
+  .toggles { display: flex; gap: 12px; flex-wrap: wrap; font-size: 14px; }
+  .switch input {
+    appearance: none; width: 46px; height: 26px;
+    border-radius: 16px; background: #2a3555;
+    position: relative; cursor: pointer; transition: .2s;
+  }
+  .switch input:checked { background: #2f8dff; }
+  .switch input::after {
+    content: ""; position: absolute; top: 4px; left: 4px;
+    width: 18px; height: 18px; border-radius: 50%;
+    background: #fff; transition: .2s;
+  }
+  .switch input:checked::after { transform: translateX(20px); }
+
+  /* ======= Alertas ======= */
+  .alerts { display: grid; gap: 8px; }
+  .alert {
+    padding: 10px 12px; border-radius: 12px;
+    font-size: 14px; transition: background .3s ease, color .3s ease;
+  }
+  .ok   { background: rgba(33,208,122,.1); border: 1px solid rgba(33,208,122,.3); }
+  .warn { background: rgba(255,191,71,.1); border: 1px solid rgba(255,191,71,.3); }
+  .bad  { background: rgba(255,90,110,.1); border: 1px solid rgba(255,90,110,.3); }
+
+  /* ======= Canvas ======= */
+  canvas { width: 100%; height: 260px; display: block; }
+
+  /* ======= Footer ======= */
+  footer { text-align: center; font-size: 12px; color: var(--muted); padding: 14px; }
